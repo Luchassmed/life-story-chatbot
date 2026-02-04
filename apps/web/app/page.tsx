@@ -1,11 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type ChatMsg = { role: "user" | "assistant"; text: string };
 
+const SESSION_STORAGE_KEY = "life-story-session-id";
+
+function getOrCreateSessionId(): string {
+  // Check localStorage for existing session
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem(SESSION_STORAGE_KEY);
+    if (stored) return stored;
+
+    // Generate new session ID and store it
+    const newId = crypto.randomUUID();
+    localStorage.setItem(SESSION_STORAGE_KEY, newId);
+    return newId;
+  }
+  // Fallback for SSR
+  return crypto.randomUUID();
+}
+
 export default function Home() {
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId, setSessionId] = useState<string>("");
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMsg[]>([
     {
@@ -15,11 +32,16 @@ export default function Home() {
   ]);
   const [loading, setLoading] = useState(false);
 
+  // Initialize session ID from localStorage on mount
+  useEffect(() => {
+    setSessionId(getOrCreateSessionId());
+  }, []);
+
   const apiBase =
     process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
   async function send() {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || !sessionId) return;
 
     const userText = input.trim();
     setInput("");
@@ -50,6 +72,18 @@ export default function Home() {
     }
   }
 
+  function startNewSession() {
+    const newId = crypto.randomUUID();
+    localStorage.setItem(SESSION_STORAGE_KEY, newId);
+    setSessionId(newId);
+    setMessages([
+      {
+        role: "assistant",
+        text: "Hi — tell me a bit about a good memory from your life.",
+      },
+    ]);
+  }
+
   return (
     <main
       style={{
@@ -59,9 +93,24 @@ export default function Home() {
         fontFamily: "system-ui",
       }}
     >
-      <h1 style={{ fontSize: 22, marginBottom: 12 }}>
-        Life Story Chatbot (MVP)
-      </h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h1 style={{ fontSize: 22, margin: 0 }}>
+          Life Story Chatbot (MVP)
+        </h1>
+        <button
+          onClick={startNewSession}
+          style={{
+            padding: "6px 12px",
+            borderRadius: 6,
+            border: "1px solid #ddd",
+            background: "#f5f5f5",
+            cursor: "pointer",
+            fontSize: 14,
+          }}
+        >
+          New Session
+        </button>
+      </div>
 
       <div
         style={{
