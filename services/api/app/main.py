@@ -11,6 +11,7 @@ from sqlalchemy import text
 from .safety import SafetyRouter
 from .database import get_db, init_db
 from .models import Session, SafetyIntervention, SafetyCategory
+from . import prompts
 
 app = FastAPI(title="Life Story Chatbot API")
 
@@ -87,32 +88,21 @@ def generate_summary(existing_summary: Optional[str], user_message: str, assista
     if not openai_client:
         return existing_summary or ""
 
-    summary_prompt = """You are summarizing a conversation between an older adult and a supportive companion chatbot.
-
-Your task is to create or update a brief summary that captures:
-- Key memories or life stories the person has shared
-- Important themes (childhood, work, family, places, etc.)
-- Personal preferences, likes, and dislikes mentioned
-- Any concerns or topics they seem interested in discussing
-
-Keep the summary concise (2-4 sentences) but informative enough to maintain conversation continuity.
-Focus on what's meaningful to the person, not generic details."""
+    summary_prompt = prompts.get_prompt("summary", "system")
 
     if existing_summary:
-        context = f"""Current summary of previous conversations:
-{existing_summary}
-
-Latest exchange:
-User: {user_message}
-Assistant: {assistant_reply}
-
-Please update the summary to incorporate any new important information from this exchange."""
+        context = prompts.render_prompt(
+            "summary", "update",
+            existing_summary=existing_summary,
+            user_message=user_message,
+            assistant_reply=assistant_reply,
+        )
     else:
-        context = f"""This is the beginning of the conversation. Create an initial summary based on:
-User: {user_message}
-Assistant: {assistant_reply}
-
-Create a brief summary capturing any key information shared."""
+        context = prompts.render_prompt(
+            "summary", "initial",
+            user_message=user_message,
+            assistant_reply=assistant_reply,
+        )
 
     try:
         response = openai_client.chat.completions.create(
@@ -197,29 +187,15 @@ async def chat(payload: ChatIn, db: DBSession = Depends(get_db)):
 
     try:
         # Build system prompt with conversation context
-        base_prompt = """You are a gentle, supportive companion for older adults. Your role is to:
-
-1. Help them share and explore their life stories through thoughtful questions
-2. Engage in everyday small talk and check-ins
-3. Listen actively and respond with warmth and interest
-
-Important guidelines:
-- Never provide medical, legal, or crisis counseling advice
-- If someone mentions health concerns, gently suggest they speak with their doctor
-- Keep responses conversational and encouraging
-- Ask follow-up questions to help them elaborate on their stories
-- Show genuine interest in their experiences and memories
-
-Your goal is to be a caring listener who helps people reflect on and share their life experiences."""
+        base_prompt = prompts.get_prompt("system", "base")
 
         # Add conversation summary context if available
         if session.summary:
-            system_prompt = f"""{base_prompt}
-
-Context from previous conversations with this person:
-{session.summary}
-
-Use this context to maintain continuity and show you remember what they've shared before."""
+            system_prompt = prompts.render_prompt(
+                "system", "with_summary",
+                base=base_prompt,
+                summary=session.summary,
+            )
         else:
             system_prompt = base_prompt
 

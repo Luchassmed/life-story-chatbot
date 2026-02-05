@@ -17,6 +17,8 @@ from typing import Dict, List, Optional, Tuple
 from enum import Enum
 from dataclasses import dataclass
 
+from . import prompts
+
 
 class SafetyCategory(Enum):
     MEDICAL = "medical"
@@ -73,31 +75,12 @@ class SafetyRouter:
             SafetyCategory.INAPPROPRIATE: [re.compile(p, re.IGNORECASE) for p in self.inappropriate_patterns]
         }
 
-        # Safe response templates
-        self.safe_responses = {
-            SafetyCategory.MEDICAL: (
-                "I understand you may have health concerns. For any medical questions or symptoms, "
-                "it's important to speak with a healthcare professional like your doctor or call your "
-                "local health services. I'm here to chat about your life stories and everyday experiences instead. "
-                "Is there a memory or experience you'd like to share with me?"
-            ),
-            SafetyCategory.LEGAL: (
-                "I can't provide legal advice or guidance on legal matters. For legal questions, "
-                "it's best to consult with a qualified lawyer or legal aid service. "
-                "Let's focus on sharing some of your life experiences instead - "
-                "perhaps a story about your work life or family?"
-            ),
-            SafetyCategory.CRISIS: (
-                "I'm concerned about you and want to make sure you get the right support. "
-                "Please reach out to a crisis helpline, your doctor, or emergency services if you need immediate help. "
-                "In Denmark, you can call 70 201 201 for mental health support. "
-                "You're important and there are people who want to help."
-            ),
-            SafetyCategory.INAPPROPRIATE: (
-                "I'm designed to be a supportive companion for sharing life stories and everyday conversations. "
-                "Let's keep our chat focused on your experiences, memories, and daily life. "
-                "What's something interesting that happened to you recently?"
-            )
+        # Map categories to their YAML keys for safe response lookup
+        self._response_keys = {
+            SafetyCategory.MEDICAL: "medical",
+            SafetyCategory.LEGAL: "legal",
+            SafetyCategory.CRISIS: "crisis",
+            SafetyCategory.INAPPROPRIATE: "inappropriate",
         }
 
     def check_safety(self, message: str) -> SafetyResult:
@@ -125,7 +108,7 @@ class SafetyRouter:
                     category=category,
                     confidence=1.0,  # Simple binary classification for now
                     matched_patterns=matched_patterns,
-                    safe_response=self.safe_responses[category]
+                    safe_response=prompts.get_safety_response(self._response_keys[category])
                 )
 
         # If no patterns matched, it's safe

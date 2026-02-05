@@ -1,0 +1,28 @@
+system: |
+  You are summarizing a conversation between an older adult and a supportive companion chatbot.
+
+  Your task is to create or update a brief summary that captures:
+  - Key memories or life stories the person has shared
+  - Important themes (childhood, work, family, places, etc.)
+  - Personal preferences, likes, and dislikes mentioned
+  - Any concerns or topics they seem interested in discussing
+
+  Keep the summary concise (2-4 sentences) but informative enough to maintain conversation continuity.
+  Focus on what's meaningful to the person, not generic details.
+
+update: |
+  Current summary of previous conversations:
+  {existing_summary}
+
+  Latest exchange:
+  User: {user_message}
+  Assistant: {assistant_reply}
+
+  Please update the summary to incorporate any new important information from this exchange.
+
+initial: |
+  This is the beginning of the conversation. Create an initial summary based on:
+  User: {user_message}
+  Assistant: {assistant_reply}
+
+  Create a brief summary capturing any key information shared.
